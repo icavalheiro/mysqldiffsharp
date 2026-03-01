@@ -122,40 +122,40 @@ public static partial class DiffEngine
             throw new ArgumentException($"\nCannot apply changes: {target.Name} is not a database.");
 
         Log("Applying changes...");
-        var argsList = target.GetAuthArgs();
-        argsList.Add(target.Name);
+        // var argsList = target.GetAuthArgs();
+        // argsList.Add(target.Name);
 
-        try
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = "mysql",
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
+        // try
+        // {
+        //     var psi = new ProcessStartInfo
+        //     {
+        //         FileName = "mysql",
+        //         RedirectStandardInput = true,
+        //         RedirectStandardOutput = true,
+        //         RedirectStandardError = true,
+        //         UseShellExecute = false,
+        //         CreateNoWindow = true
+        //     };
 
-            foreach (var arg in argsList)
-                psi.ArgumentList.Add(arg);
+        //     foreach (var arg in argsList)
+        //         psi.ArgumentList.Add(arg);
 
-            using var process = Process.Start(psi);
-            if (process is null)
-                throw new Exception("Failed to start mysql process.");
+        //     using var process = Process.Start(psi);
+        //     if (process is null)
+        //         throw new Exception("Failed to start mysql process.");
 
-            process.StandardInput.Write(diffs);
-            process.StandardInput.Close();
+        //     process.StandardInput.Write(diffs);
+        //     process.StandardInput.Close();
 
-            process.WaitForExit();
-            string err = process.StandardError.ReadToEnd();
-            if (process.ExitCode != 0)
-                throw new Exception($"Command 'mysql' exited with code {process.ExitCode}\n{err}");
-        }
-        catch (Exception ex)
-        {
-            throw new Exception($"Failed to apply changes: {ex.Message}");
-        }
+        //     process.WaitForExit();
+        //     string err = process.StandardError.ReadToEnd();
+        //     if (process.ExitCode != 0)
+        //         throw new Exception($"Command 'mysql' exited with code {process.ExitCode}\n{err}");
+        // }
+        // catch (Exception ex)
+        // {
+        //     throw new Exception($"Failed to apply changes: {ex.Message}");
+        // }
     }
 
     [GeneratedRegex(@"\s+")]

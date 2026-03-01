@@ -1,5 +1,7 @@
 using System.Diagnostics;
+using System.Text;
 using System.Text.RegularExpressions;
+using MySqlConnector;
 using SqlDiffSharp.Models;
 using static SqlDiffSharp.Utils.ConsoleUtils;
 
@@ -21,7 +23,9 @@ public partial class Database
         {
             Name = arg[3..];
             SourceType = "db";
-            text = Dump();
+            var dumpTask = GetDatabaseSchemaAsync();
+            Task.WhenAll([dumpTask]);
+            text = dumpTask.Result;
         }
         else if (File.Exists(arg))
         {
@@ -33,84 +37,203 @@ public partial class Database
         {
             Name = arg;
             SourceType = "db";
-            text = Dump();
+            var dumpTask = GetDatabaseSchemaAsync();
+            Task.WhenAll([dumpTask]);
+            text = dumpTask.Result;
         }
 
         ParseDefs(text);
     }
 
-    public List<string> GetAuthArgs()
+    // public List<string> GetAuthArgs()
+    // {
+    //     var args = new List<string>();
+    //     var host = config.GetAuth("host", dbNum);
+    //     var user = config.GetAuth("user", dbNum);
+    //     var pass = config.GetAuth("password", dbNum);
+    //     var port = config.GetAuth("port", dbNum);
+    //     var socket = config.GetAuth("socket", dbNum);
+
+    //     if (!string.IsNullOrEmpty(host))
+    //     {
+    //         args.Add("-h");
+    //         args.Add(host);
+    //     }
+
+    //     if (!string.IsNullOrEmpty(user))
+    //     {
+    //         args.Add("-u");
+    //         args.Add(user);
+    //     }
+
+    //     if (!string.IsNullOrEmpty(pass))
+    //         args.Add($"-p{pass}");
+
+    //     if (!string.IsNullOrEmpty(port))
+    //     {
+    //         args.Add("-P");
+    //         args.Add(port);
+    //     }
+
+    //     if (!string.IsNullOrEmpty(socket))
+    //     {
+    //         args.Add("-S");
+    //         args.Add(socket);
+    //     }
+
+    //     return args;
+    // }
+    private string GetDbConnectionString()
     {
-        var args = new List<string>();
         var host = config.GetAuth("host", dbNum);
         var user = config.GetAuth("user", dbNum);
         var pass = config.GetAuth("password", dbNum);
         var port = config.GetAuth("port", dbNum);
         var socket = config.GetAuth("socket", dbNum);
 
-        if (!string.IsNullOrEmpty(host))
+        var connectionStringBuilder = new MySqlConnectionStringBuilder
         {
-            args.Add("-h");
-            args.Add(host);
-        }
-
-        if (!string.IsNullOrEmpty(user))
-        {
-            args.Add("-u");
-            args.Add(user);
-        }
-
-        if (!string.IsNullOrEmpty(pass))
-            args.Add($"-p{pass}");
-
-        if (!string.IsNullOrEmpty(port))
-        {
-            args.Add("-P");
-            args.Add(port);
-        }
+            Server = host,
+            UserID = user,
+            Password = pass,
+            Port = uint.Parse(port ?? "3306"),
+            Database = Name,
+            ConnectionTimeout = 30,
+            AllowUserVariables = true,
+            UseCompression = false,
+        };
 
         if (!string.IsNullOrEmpty(socket))
         {
-            args.Add("-S");
-            args.Add(socket);
+            connectionStringBuilder.ConnectionProtocol = MySqlConnectionProtocol.UnixSocket;
+            connectionStringBuilder.Server = socket;
+        }
+        else
+        {
+            connectionStringBuilder.ConnectionProtocol = MySqlConnectionProtocol.Tcp;
         }
 
-        return args;
+        return connectionStringBuilder.ConnectionString;
     }
 
-    private string Dump()
+    private async Task<string> GetDatabaseSchemaAsync()
     {
-        Log($"Running mysqldump for {Name}");
-        var args = GetAuthArgs();
-        args.Add("-d"); // no data
-        args.Add("--compact");
-        args.Add(Name);
+        var schemaBuilder = new StringBuilder();
+        var tables = new List<string>();
 
-        var psi = new ProcessStartInfo
+        await using var connection = new MySqlConnection(GetDbConnectionString());
+        await connection.OpenAsync();
+
+        // 1. Get all table names
+        await using (var command = new MySqlCommand("SHOW TABLES;", connection))
+        await using (var reader = await command.ExecuteReaderAsync())
         {
-            FileName = "mysqldump",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
+            while (await reader.ReadAsync())
+            {
+                tables.Add(reader.GetString(0));
+            }
+        }
+        Log($"Found {tables.Count} tables.");
 
-        foreach (var a in args)
-            psi.ArgumentList.Add(a);
+        // 2. Get the DDL (Data Definition Language) for each table
+        var degreeOfParallelism = Environment.ProcessorCount;
+        Log($"Using {degreeOfParallelism} parallel tasks.");
 
-        using var process = Process.Start(psi);
-        if (process == null)
-            throw new Exception("Failed to start mysqldump.");
+        var tableSchemas = new string[tables.Count];
 
-        string output = process.StandardOutput.ReadToEnd();
-        string error = process.StandardError.ReadToEnd();
-        process.WaitForExit();
+        await Parallel.ForEachAsync(
+            tables.Select((table, index) => (table, index)),
+            new ParallelOptions { MaxDegreeOfParallelism = degreeOfParallelism },
+            async (item, cancellationToken) =>
+            {
+                var (table, index) = item;
 
-        if (process.ExitCode != 0)
-            throw new Exception($"mysqldump failed: {error}");
+                // Create a new connection for each task (connections are not thread-safe)
+                await using var taskConnection = new MySqlConnection(GetDbConnectionString());
+                await taskConnection.OpenAsync(cancellationToken);
 
-        return output;
+                Log($"Loading table information for: {table} (Task {Task.CurrentId})");
+
+                await using var command = new MySqlCommand($"SHOW CREATE TABLE `{table}`;", taskConnection);
+                await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+                if (await reader.ReadAsync(cancellationToken))
+                {
+                    // Store the result at the same index to maintain order
+                    tableSchemas[index] = $"{reader.GetString(1)};\n\n";
+                }
+            }
+        );
+
+        // Build the final schema string in order
+        foreach (var schema in tableSchemas)
+        {
+            if (schema != null)
+            {
+                schemaBuilder.Append(schema);
+            }
+        }
+
+
+        // foreach (var table in tables)
+        // {
+        //     Log($"Loading table information for: {table}");
+        //     await using var command = new MySqlCommand($"SHOW CREATE TABLE `{table}`;", connection);
+        //     await using var reader = await command.ExecuteReaderAsync();
+        //     if (await reader.ReadAsync())
+        //     {
+        //         // The second column contains the actual CREATE TABLE statement
+        //         schemaBuilder.AppendLine(reader.GetString(1));
+        //         schemaBuilder.AppendLine(";"); // Append the terminator
+        //         schemaBuilder.AppendLine();
+        //     }
+        // }
+
+        return schemaBuilder.ToString();
     }
+
+    // private string Dump()
+    // {
+    //     Log($"Running mysqldump for {Name}");
+    //     var args = GetAuthArgs();
+    //     args.Add("--no-data");
+    //     args.Add("--compact");
+    //     args.Add(Name);
+
+    //     var psi = new ProcessStartInfo
+    //     {
+    //         FileName = "mysqldump",
+    //         RedirectStandardOutput = true,
+    //         RedirectStandardError = true,
+    //         UseShellExecute = false,
+    //         CreateNoWindow = true
+    //     };
+
+    //     foreach (var a in args)
+    //         psi.ArgumentList.Add(a);
+
+    //     using var process = Process.Start(psi);
+    //     if (process == null)
+    //         throw new Exception("Failed to start mysqldump.");
+
+    //     var outputTask = process.StandardOutput.ReadToEndAsync();
+    //     var errorTask = process.StandardError.ReadToEndAsync();
+
+    //     process.OutputDataReceived += (sender, e) => Log("out: " + e.Data);
+    //     process.ErrorDataReceived += (sender, e) => Log("error:" + e.Data);
+
+    //     process.WaitForExit();
+
+    //     Task.WaitAll([outputTask, errorTask]);
+
+    //     string output = outputTask.Result;
+    //     string error = errorTask.Result;
+
+    //     if (process.ExitCode != 0)
+    //         throw new Exception($"mysqldump failed: {error}");
+
+    //     return output;
+    // }
 
     private void ParseDefs(string text)
     {

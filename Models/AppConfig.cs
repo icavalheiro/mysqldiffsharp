@@ -29,7 +29,7 @@ public class AppConfig
                 else
                     val = null;
 
-                if (key == "--help" || key == "-h")
+                if (key == "--help")
                     ShowHelp = true;
                 else if (key == "--keep-old-tables")
                     KeepOldTables = true;
