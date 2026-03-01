@@ -1,4 +1,4 @@
-namespace SqlDiffSharp.Models;
+namespace MySqlDiffSharp.Models;
 
 public class AppConfig
 {

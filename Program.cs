@@ -1,6 +1,6 @@
-﻿using SqlDiffSharp.Models;
-using SqlDiffSharp.Utils;
-using static SqlDiffSharp.Utils.ConsoleUtils;
+﻿using MySqlDiffSharp.Models;
+using MySqlDiffSharp.Utils;
+using static MySqlDiffSharp.Utils.ConsoleUtils;
 
 var config = new AppConfig(args);
 if (config.ShowHelp || args.Length < 2)

@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace SqlDiffSharp.Models;
+namespace MySqlDiffSharp.Models;
 
 public partial class Table
 {

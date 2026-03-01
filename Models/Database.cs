@@ -2,8 +2,8 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 using MySqlConnector;
-using SqlDiffSharp.Models;
-using static SqlDiffSharp.Utils.ConsoleUtils;
+using MySqlDiffSharp.Models;
+using static MySqlDiffSharp.Utils.ConsoleUtils;
 
 public partial class Database
 {

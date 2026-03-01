@@ -1,4 +1,4 @@
-namespace SqlDiffSharp.Utils;
+namespace MySqlDiffSharp.Utils;
 
 public static class ConsoleUtils
 {

@@ -1,10 +1,10 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
-using SqlDiffSharp.Models;
-using static SqlDiffSharp.Utils.ConsoleUtils;
+using MySqlDiffSharp.Models;
+using static MySqlDiffSharp.Utils.ConsoleUtils;
 
-namespace SqlDiffSharp.Utils;
+namespace MySqlDiffSharp.Utils;
 
 public static partial class DiffEngine
 {
