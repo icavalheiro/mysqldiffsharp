@@ -4,7 +4,7 @@ public static class ConsoleUtils
 {
     public static void Log(string message)
     {
-        Console.WriteLine($"[DEBUG] {message}");
+        Console.WriteLine($"[MysqlDiffSharp] {message}");
     }
 
     public static void PrintHelp()
