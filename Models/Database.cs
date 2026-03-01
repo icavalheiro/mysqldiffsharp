@@ -136,7 +136,7 @@ public partial class Database
         Log($"Found {tables.Count} tables.");
 
         // 2. Get the DDL (Data Definition Language) for each table
-        var degreeOfParallelism = Environment.ProcessorCount;
+        var degreeOfParallelism = Math.Clamp(Environment.ProcessorCount * 2, 4, 30);
         Log($"Using {degreeOfParallelism} parallel tasks.");
 
         var tableSchemas = new string[tables.Count];
