@@ -27,7 +27,10 @@ if (string.IsNullOrWhiteSpace(diffs))
     return 0;
 }
 
+Log("Diffs ready, please verify:");
+Log("########################################################");
 Console.Write(diffs);
+Log("########################################################");
 
 if (config.BatchApply || config.Apply)
 {
