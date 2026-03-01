@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 using MySqlConnector;
@@ -45,45 +44,7 @@ public partial class Database
         ParseDefs(text);
     }
 
-    // public List<string> GetAuthArgs()
-    // {
-    //     var args = new List<string>();
-    //     var host = config.GetAuth("host", dbNum);
-    //     var user = config.GetAuth("user", dbNum);
-    //     var pass = config.GetAuth("password", dbNum);
-    //     var port = config.GetAuth("port", dbNum);
-    //     var socket = config.GetAuth("socket", dbNum);
-
-    //     if (!string.IsNullOrEmpty(host))
-    //     {
-    //         args.Add("-h");
-    //         args.Add(host);
-    //     }
-
-    //     if (!string.IsNullOrEmpty(user))
-    //     {
-    //         args.Add("-u");
-    //         args.Add(user);
-    //     }
-
-    //     if (!string.IsNullOrEmpty(pass))
-    //         args.Add($"-p{pass}");
-
-    //     if (!string.IsNullOrEmpty(port))
-    //     {
-    //         args.Add("-P");
-    //         args.Add(port);
-    //     }
-
-    //     if (!string.IsNullOrEmpty(socket))
-    //     {
-    //         args.Add("-S");
-    //         args.Add(socket);
-    //     }
-
-    //     return args;
-    // }
-    private string GetDbConnectionString()
+    public string GetDbConnectionString()
     {
         var host = config.GetAuth("host", dbNum);
         var user = config.GetAuth("user", dbNum);
@@ -174,66 +135,8 @@ public partial class Database
             }
         }
 
-
-        // foreach (var table in tables)
-        // {
-        //     Log($"Loading table information for: {table}");
-        //     await using var command = new MySqlCommand($"SHOW CREATE TABLE `{table}`;", connection);
-        //     await using var reader = await command.ExecuteReaderAsync();
-        //     if (await reader.ReadAsync())
-        //     {
-        //         // The second column contains the actual CREATE TABLE statement
-        //         schemaBuilder.AppendLine(reader.GetString(1));
-        //         schemaBuilder.AppendLine(";"); // Append the terminator
-        //         schemaBuilder.AppendLine();
-        //     }
-        // }
-
         return schemaBuilder.ToString();
     }
-
-    // private string Dump()
-    // {
-    //     Log($"Running mysqldump for {Name}");
-    //     var args = GetAuthArgs();
-    //     args.Add("--no-data");
-    //     args.Add("--compact");
-    //     args.Add(Name);
-
-    //     var psi = new ProcessStartInfo
-    //     {
-    //         FileName = "mysqldump",
-    //         RedirectStandardOutput = true,
-    //         RedirectStandardError = true,
-    //         UseShellExecute = false,
-    //         CreateNoWindow = true
-    //     };
-
-    //     foreach (var a in args)
-    //         psi.ArgumentList.Add(a);
-
-    //     using var process = Process.Start(psi);
-    //     if (process == null)
-    //         throw new Exception("Failed to start mysqldump.");
-
-    //     var outputTask = process.StandardOutput.ReadToEndAsync();
-    //     var errorTask = process.StandardError.ReadToEndAsync();
-
-    //     process.OutputDataReceived += (sender, e) => Log("out: " + e.Data);
-    //     process.ErrorDataReceived += (sender, e) => Log("error:" + e.Data);
-
-    //     process.WaitForExit();
-
-    //     Task.WaitAll([outputTask, errorTask]);
-
-    //     string output = outputTask.Result;
-    //     string error = errorTask.Result;
-
-    //     if (process.ExitCode != 0)
-    //         throw new Exception($"mysqldump failed: {error}");
-
-    //     return output;
-    // }
 
     private void ParseDefs(string text)
     {

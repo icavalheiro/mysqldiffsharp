@@ -33,7 +33,7 @@ if (config.BatchApply || config.Apply)
 {
     if (!config.BatchApply)
     {
-        Log($"\nApply above changes to {db1.Name} [y/N] ? ");
+        Log($"\nApply above changes to {db2.Name} [y/N] ? ");
 
         if (diffs.Contains("DROP TABLE", StringComparison.OrdinalIgnoreCase))
             Log("(CAUTION! Changes contain DROP TABLE commands.)");
@@ -43,7 +43,7 @@ if (config.BatchApply || config.Apply)
             return 0;
     }
 
-    // DiffEngine.ApplyDiff(db1, diffs, config);
+    await DiffEngine.ApplyDiffAsync(db2, diffs);
     Log("Successfully applied changes.");
 }
 
